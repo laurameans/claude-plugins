@@ -1,0 +1,12 @@
+{
+  "name": "means-tools",
+  "description": "JWS/JCS full-stack Swift development tools: app scaffolding, website management, news monitoring, and animations",
+  "version": "1.0.0",
+  "author": {
+    "name": "MeansAI",
+    "email": "dev@means.ai"
+  },
+  "homepage": "https://github.com/MeansAI/claude-plugins",
+  "repository": "https://github.com/MeansAI/claude-plugins",
+  "license": "MIT"
+}

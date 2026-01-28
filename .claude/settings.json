@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(swift:*)",
+      "Bash(swift build:*)",
+      "Bash(swift test:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(xcodegen:*)",
+      "Bash(curl:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(find:*)",
+      "Bash(sed:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(chmod:*)",
+      "Bash(open:*)",
+      "Bash(manim:*)",
+      "Bash(pip:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(git:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:means.ai)",
+      "WebFetch(domain:jws.ai)",
+      "WebFetch(domain:outtakes.com)",
+      "WebFetch(domain:voosey.com)",
+      "WebFetch(domain:c.jws.ai)",
+      "WebSearch"
+    ]
+  }
+}

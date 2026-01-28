@@ -1,0 +1,15 @@
+{
+  "name": "means-marketplace",
+  "owner": {
+    "name": "MeansAI",
+    "email": "dev@means.ai"
+  },
+  "plugins": [
+    {
+      "name": "means-tools",
+      "source": ".",
+      "description": "JWS/JCS full-stack Swift development tools",
+      "version": "1.0.0"
+    }
+  ]
+}
