@@ -2,6 +2,336 @@
 
 Create a new full-stack application by cloning the StarterApp scaffold, then agentically build it out based on your requirements.
 
+## CRITICAL RULES - READ BEFORE IMPLEMENTING
+
+### NEVER USE:
+- `NavigationView`, `NavigationStack`, `NavigationSplitView` - we use Interface routing via `interface.route`
+- `.toolbar` or native SwiftUI toolbars - we use `GaiaTopBar`/`JCSTopBar` modifiers
+- Custom VStack layouts with topBar/bottomBar components - we use JCS modifiers
+- `.font()` modifier on Images - use `.resizable().aspectRatio().frame()` instead
+- `Spacer()` + content + `Spacer()` for centering - use `.frame(alignment:)` instead
+- `.frame(maxWidth: .infinity, maxHeight: .infinity)` on child views without alignment
+- `List` or `Form` for scrollable content - use `ScrollView` + `LazyVStack`
+
+### ALWAYS USE:
+- JCS modifier stack in ORDER: `JCSBottomBar` -> `GaiaTopBar` -> `JCSMain`
+- `.jTag()` for view visibility in ZStack content switching
+- Fibonacci sizing for frames: `Fibonacci.large.wholeValue`, `.large`, `.medium`, etc.
+- `ScrollView` with `LazyVStack` for scrollable content
+- `.frame(alignment: .center)` for centered content
+- **CRITICAL BAR HEIGHT CONSTANTS** - Define at file level in ContentView.swift:
+  ```swift
+  let topBarHeight: CGFloat = 52
+  let bottomBarHeight: CGFloat = 100
+  ```
+- **ALWAYS apply both paddings** inside ScrollView content:
+  ```swift
+  .padding(.top, topBarHeight)
+  .padding(.bottom, bottomBarHeight)
+  ```
+- Interface routing: `interface.route = Interface.Routes.myRoute`
+- **NO COMMENTS** - Write clean, self-documenting code without inline comments
+
+---
+
+## CORRECT IMAGE PATTERN
+
+ALWAYS use this pattern for images and icons:
+
+```swift
+// CORRECT - SF Symbols
+Image(systemName: "star.fill")
+    .resizable()
+    .aspectRatio(contentMode: .fit)
+    .frame(width: Fibonacci.large.wholeValue, height: Fibonacci.large.wholeValue)
+    .foregroundStyle(Interface.Colors.accent)
+
+// CORRECT - Template images
+Image("my-icon")
+    .renderingMode(.template)
+    .resizable()
+    .aspectRatio(contentMode: .fit)
+    .frame(width: Fibonacci.medium.wholeValue, height: Fibonacci.medium.wholeValue)
+    .foregroundStyle(.accentColor)
+
+// CORRECT - Full images (photos, logos with colors)
+Image("logo-full")
+    .resizable()
+    .aspectRatio(contentMode: .fit)
+    .frame(height: Fibonacci.xLarge.wholeValue)
+
+// WRONG - NEVER DO THIS:
+Image(systemName: "star.fill")
+    .font(.system(size: 64))  // NEVER use .font() on images
+
+Image(systemName: "star.fill")
+    .imageScale(.large)  // Avoid - use explicit frame sizing instead
+```
+
+---
+
+## CORRECT CONTENTVIEW PATTERN
+
+The ContentView MUST use JCS modifiers in the correct order:
+
+```swift
+struct ContentView: View {
+    @EnvironmentObject var interface: Interface
+    @EnvironmentObject var network: Network
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        ZStack(alignment: .center) {
+            // Route-based content switching with .jTag
+            HomeView()
+                .jTag(interface.route as? Interface.Routes == Interface.Routes.home)
+
+            SettingsView()
+                .jTag(interface.route as? Interface.Routes == Interface.Routes.settings)
+
+            // Auth views if needed
+            if self.interface.route as? AuthRoute != nil {
+                JCSAuthView<Interface, Network>(...)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // MODIFIER ORDER IS CRITICAL - DO NOT CHANGE
+        .modifier(JCSBottomBar<Interface>(shadowColor: Color.shadowColor, content: {
+            TabBarView()
+        }, subRouter: { _ in
+            EmptyView()
+        }))
+        .modifier(GaiaTopBar<Interface, Network>(
+            topBarPadding: topBarPadding,
+            // ... other params
+        ))
+        .modifier(JCSMain<Network, Interface>(
+            modalView: { /* modals */ },
+            overlayView: { /* overlays */ },
+            enableEdgeEffects: true
+        ))
+        .background {
+            backgroundView
+                .edgesIgnoringSafeArea(.all)
+        }
+    }
+}
+```
+
+---
+
+## CORRECT CHILD VIEW PATTERNS
+
+### For scrollable content (MOST COMMON):
+
+**CRITICAL**: All ScrollView content MUST have BOTH top AND bottom padding.
+
+```swift
+let topBarHeight: CGFloat = 52
+let bottomBarHeight: CGFloat = 100
+
+struct HomeView: View {
+    @EnvironmentObject var interface: Interface
+    @EnvironmentObject var network: Network
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: .medium) {
+                ForEach(items, id: \.self) { item in
+                    ItemCell(item: item)
+                }
+            }
+            .padding()
+            .padding(.top, topBarHeight)
+            .padding(.bottom, bottomBarHeight)
+        }
+    }
+}
+```
+
+### For centered content (no scroll):
+
+```swift
+struct EmptyStateView: View {
+    var body: some View {
+        VStack(spacing: .large) {
+            Image(systemName: "star.fill")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: Fibonacci.xxLarge.wholeValue, height: Fibonacci.xxLarge.wholeValue)
+                .foregroundStyle(.accentColor)
+
+            Text("Welcome")
+                .lunaFont(.largeTitle, weight: .bold)
+
+            Text("Get started by creating your first item")
+                .lunaFont(.body)
+                .foregroundStyle(.med)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+}
+```
+
+### For grid content:
+
+```swift
+struct GalleryView: View {
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: interface.isMobile ? 142 : 360))], spacing: .xSmall) {
+                ForEach(items, id: \.self) { item in
+                    ItemCell(item: item)
+                }
+            }
+            .padding()
+            .padding(.top, topBarHeight)
+            .padding(.bottom, bottomBarHeight)
+        }
+    }
+}
+```
+
+---
+
+## COMMON MISTAKES - NEVER DO THESE
+
+### 1. WRONG: Using Spacer() for centering
+
+```swift
+// WRONG
+struct BadCenteredView: View {
+    var body: some View {
+        VStack {
+            Spacer()           // NO!
+            Text("Centered")
+            Spacer()           // NO!
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)  // Without alignment!
+    }
+}
+
+// CORRECT
+struct GoodCenteredView: View {
+    var body: some View {
+        VStack {
+            Text("Centered")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+}
+```
+
+### 2. WRONG: Using .font() on Images
+
+```swift
+// WRONG
+Image(systemName: "star.fill")
+    .font(.system(size: 64))  // Images don't have fonts!
+
+// CORRECT
+Image(systemName: "star.fill")
+    .resizable()
+    .aspectRatio(contentMode: .fit)
+    .frame(width: Fibonacci.xxLarge.wholeValue, height: Fibonacci.xxLarge.wholeValue)
+```
+
+### 3. WRONG: Using NavigationView/NavigationStack
+
+```swift
+// WRONG
+NavigationStack {
+    List { ... }
+    .navigationTitle("Home")
+}
+
+// CORRECT - Use Interface routing
+ZStack {
+    HomeView()
+        .jTag(interface.route as? Interface.Routes == .home)
+}
+.modifier(GaiaTopBar<Interface, Network>(...))
+```
+
+### 4. WRONG: Using .toolbar
+
+```swift
+// WRONG
+.toolbar {
+    ToolbarItem(placement: .navigationBarTrailing) {
+        Button("Add") { }
+    }
+}
+
+// CORRECT - Use GaiaTopBar actions or custom overlay buttons
+```
+
+### 5. WRONG: Forgetting bar padding (CAUSES CONTENT OVERLAP!)
+
+```swift
+// WRONG
+ScrollView {
+    VStack { ... }
+    .padding()
+}
+
+// WRONG - Missing bottom padding
+ScrollView {
+    VStack { ... }
+    .padding()
+    .padding(.top, topBarHeight)
+}
+
+// WRONG - Using Fibonacci instead of 52pt
+ScrollView {
+    VStack { ... }
+    .padding()
+    .padding(.top, Fibonacci.large.wholeValue)
+}
+
+// CORRECT
+ScrollView {
+    VStack { ... }
+    .padding()
+    .padding(.top, topBarHeight)
+    .padding(.bottom, bottomBarHeight)
+}
+```
+
+### 6. WRONG: Creating custom navigation structure
+
+```swift
+// WRONG
+struct MyView: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            // Custom top bar
+            HStack { ... }
+
+            // Content
+            ScrollView { ... }
+
+            // Custom bottom bar
+            HStack { ... }
+        }
+    }
+}
+
+// CORRECT
+struct MyView: View {
+    var body: some View {
+        ScrollView {
+            VStack { ... }
+            .padding()
+            .padding(.top, topBarHeight)
+            .padding(.bottom, bottomBarHeight)
+        }
+    }
+}
+```
+
+---
+
 ## Usage
 
 ```
@@ -71,15 +401,15 @@ The JWS (Justin Web Services) platform is a comprehensive full-stack Swift devel
 ## Platform Stack
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        YOUR APPLICATION                          │
-├─────────────────────────────────────────────────────────────────┤
-│  JCX (Extensions)  │  JUI (UI Components)  │  JCS (Client)      │
-├─────────────────────────────────────────────────────────────────┤
-│                          JBS (Business Logic)                    │
-├─────────────────────────────────────────────────────────────────┤
-│                     JWS (Server Framework)                       │
-└─────────────────────────────────────────────────────────────────┘
++---------------------------------------------------------------+
+|                        YOUR APPLICATION                        |
++---------------------------------------------------------------+
+|  JCX (Extensions)  |  JUI (UI Components)  |  JCS (Client)    |
++---------------------------------------------------------------+
+|                          JBS (Business Logic)                  |
++---------------------------------------------------------------+
+|                     JWS (Server Framework)                     |
++---------------------------------------------------------------+
 ```
 
 ### JCX - Extensions & Macros
@@ -91,6 +421,8 @@ The JWS (Justin Web Services) platform is a comprehensive full-stack Swift devel
 - Reusable SwiftUI components
 - Design system primitives
 - Platform-adaptive layouts
+- `lunaFont()` for typography
+- `LunaButtonStyle`, `JCSButtonStyle` for buttons
 
 ### JBS - Business Logic & DTOs
 - Data Transfer Objects (shared client/server)
@@ -103,6 +435,7 @@ The JWS (Justin Web Services) platform is a comprehensive full-stack Swift devel
 - **InterfaceEngine** - App routing and navigation
 - Network layer with async/await
 - Keychain integration
+- **JCS Modifiers** - `JCSBottomBar`, `GaiaTopBar`, `JCSMain`
 
 ### JWS - Server Framework (Vapor-based)
 - Modular architecture
@@ -118,10 +451,10 @@ The JWS (Justin Web Services) platform is a comprehensive full-stack Swift devel
 ### The Bridge Pattern
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Client     │────▶│    Bridge    │◀────│   Server     │
-│  (SwiftUI)   │     │   (DTOs)     │     │   (Vapor)    │
-└──────────────┘     └──────────────┘     └──────────────┘
++---------------+     +---------------+     +---------------+
+|   Client      |---->|    Bridge     |<----|   Server      |
+|  (SwiftUI)    |     |   (DTOs)      |     |   (Vapor)     |
++---------------+     +---------------+     +---------------+
 ```
 
 The Bridge contains shared code: User models, API types, enums, route definitions.
@@ -150,14 +483,14 @@ public class Interface: InterfaceEngineBase, InterfaceEngine {
 }
 ```
 
-### JCS Modifier Stack (ORDER MATTERS)
+### JCS Modifier Stack (ORDER MATTERS!)
 
 ```swift
 ContentView()
-    .jcsBottomBar()      // 1. Bottom navigation
-    .gaiaTopBar()        // 2. Top bar
-    .jcsMain()           // 3. Main wrapper
-    .jcsBackground()     // 4. Background
+    .modifier(JCSBottomBar(...))  // 1. Bottom navigation - FIRST
+    .modifier(GaiaTopBar(...))    // 2. Top bar - SECOND
+    .modifier(JCSMain(...))       // 3. Main wrapper - THIRD
+    .background(...)              // 4. Background - LAST
 ```
 
 ### DTO Pattern in Bridge
@@ -256,12 +589,12 @@ mv "$TARGET/$NEW_APP/Shared/StarterAppApp.swift" "$TARGET/$NEW_APP/Shared/${NEW_
 ### Phase 2: Mass Rename References
 
 Use sed to replace:
-- `StarterApp` → `$NEW_APP`
-- `StarterBridge` → `${NEW_APP}Bridge`
-- `StarterServer` → `${NEW_APP}Server`
-- `StarterServerApp` → `${NEW_APP}ServerApp`
-- `starterapp` → `$NEW_APP_LOWER`
-- `com.outtakes.starterapp` → `ai.means.$NEW_APP_LOWER`
+- `StarterApp` -> `$NEW_APP`
+- `StarterBridge` -> `${NEW_APP}Bridge`
+- `StarterServer` -> `${NEW_APP}Server`
+- `StarterServerApp` -> `${NEW_APP}ServerApp`
+- `starterapp` -> `$NEW_APP_LOWER`
+- `com.outtakes.starterapp` -> `ai.means.$NEW_APP_LOWER`
 
 ### Phase 3: Verify Scaffold Builds
 
@@ -278,23 +611,23 @@ Based on user's app description:
 2. **For each feature, execute this loop**:
 
    ```
-   ┌─────────────────────────────────────────┐
-   │  a. Define DTOs in Bridge               │
-   ├─────────────────────────────────────────┤
-   │  b. Write swift-testing tests           │
-   ├─────────────────────────────────────────┤
-   │  c. Run tests: swift test               │
-   ├─────────────────────────────────────────┤
-   │  d. Fix until tests pass                │
-   ├─────────────────────────────────────────┤
-   │  e. Add Server module                   │
-   ├─────────────────────────────────────────┤
-   │  f. Update Client views/routes          │
-   ├─────────────────────────────────────────┤
-   │  g. Run build.sh                        │
-   ├─────────────────────────────────────────┤
-   │  h. Fix errors, loop until clean        │
-   └─────────────────────────────────────────┘
+   +-------------------------------------------+
+   |  a. Define DTOs in Bridge                 |
+   +-------------------------------------------+
+   |  b. Write swift-testing tests             |
+   +-------------------------------------------+
+   |  c. Run tests: swift test                 |
+   +-------------------------------------------+
+   |  d. Fix until tests pass                  |
+   +-------------------------------------------+
+   |  e. Add Server module                     |
+   +-------------------------------------------+
+   |  f. Update Client views/routes            |
+   +-------------------------------------------+
+   |  g. Run build.sh                          |
+   +-------------------------------------------+
+   |  h. Fix errors, loop until clean          |
+   +-------------------------------------------+
    ```
 
 3. **Mark TodoWrite items complete** as each feature ships
@@ -342,25 +675,25 @@ Provide summary:
 
 ```
 $NEW_APP/
-├── $NEW_APP/                    # Client app
-│   ├── Shared/
-│   │   ├── ${NEW_APP}App.swift  # Entry point
-│   │   ├── Controllers/
-│   │   │   ├── Engine.swift     # Routes
-│   │   │   └── Network.swift    # API
-│   │   └── Views/
-│   ├── project.yml              # XcodeGen
-│   ├── build.sh
-│   └── AGENTS.md
-├── ${NEW_APP}Bridge/            # Shared DTOs
-│   ├── Package.swift
-│   ├── Sources/
-│   └── Tests/                   # swift-testing
-├── ${NEW_APP}Server/            # Vapor backend
-│   ├── Package.swift
-│   ├── Dockerfile
-│   └── Sources/
-└── build.sh                     # Root build
++-- $NEW_APP/                    # Client app
+|   +-- Shared/
+|   |   +-- ${NEW_APP}App.swift  # Entry point
+|   |   +-- Controllers/
+|   |   |   +-- Engine.swift     # Routes
+|   |   |   +-- Network.swift    # API
+|   |   +-- Views/
+|   +-- project.yml              # XcodeGen
+|   +-- build.sh
+|   +-- AGENTS.md
++-- ${NEW_APP}Bridge/            # Shared DTOs
+|   +-- Package.swift
+|   +-- Sources/
+|   +-- Tests/                   # swift-testing
++-- ${NEW_APP}Server/            # Vapor backend
+|   +-- Package.swift
+|   +-- Dockerfile
+|   +-- Sources/
++-- build.sh                     # Root build
 ```
 
 ---
@@ -382,6 +715,84 @@ cd ${NEW_APP}Bridge && swift test
 
 ---
 
+## iOS Device Deployment (CLI - No Xcode GUI Required)
+
+### List Connected Devices
+
+```bash
+# List all available iOS devices
+xcrun devicectl list devices
+```
+
+Output shows device name, identifier, and state (available/unavailable).
+
+### Build for iOS Device
+
+```bash
+# First regenerate project with xcodegen
+cd ${NEW_APP}
+xcodegen generate
+
+# Build for specific device (use device ID from list above)
+xcodebuild -scheme ${NEW_APP}-iOS \
+  -destination 'id=DEVICE_IDENTIFIER' \
+  -configuration Debug \
+  -skipMacroValidation \
+  -skipPackageSignatureValidation \
+  -allowProvisioningUpdates \
+  build
+```
+
+**Note**: `-allowProvisioningUpdates` handles provisioning profiles automatically.
+
+### Install App on Device
+
+```bash
+# Install the built app
+xcrun devicectl device install app \
+  --device DEVICE_IDENTIFIER \
+  ~/Library/Developer/Xcode/DerivedData/${NEW_APP}-*/Build/Products/Debug-iphoneos/${NEW_APP}-iOS.app
+```
+
+### Launch App on Device
+
+```bash
+# Launch the installed app
+xcrun devicectl device process launch \
+  --device DEVICE_IDENTIFIER \
+  com.outtakes.${NEW_APP_LOWER}
+```
+
+### One-Liner Build & Deploy
+
+```bash
+# Build, install, and launch in one go
+DEVICE_ID=$(xcrun devicectl list devices 2>/dev/null | grep "available (paired)" | head -1 | awk '{print $NF}' | tr -d '()')
+xcodegen generate && \
+xcodebuild -scheme ${NEW_APP}-iOS -destination "id=$DEVICE_ID" -configuration Debug -skipMacroValidation -skipPackageSignatureValidation -allowProvisioningUpdates build && \
+xcrun devicectl device install app --device $DEVICE_ID ~/Library/Developer/Xcode/DerivedData/${NEW_APP}-*/Build/Products/Debug-iphoneos/${NEW_APP}-iOS.app && \
+xcrun devicectl device process launch --device $DEVICE_ID com.outtakes.${NEW_APP_LOWER}
+```
+
+### Required project.yml Settings for iOS
+
+```yaml
+settings:
+  base:
+    DEVELOPMENT_TEAM: "PASKH93M73"  # Outtakes LLC
+
+targets:
+  ${NEW_APP}-iOS:
+    type: application
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.outtakes.${NEW_APP_LOWER}
+        CODE_SIGN_STYLE: Automatic
+```
+
+---
+
 ## Critical Rules for Claude
 
 1. **CLONE FIRST, MODIFY SECOND** - ALWAYS `cp -R StarterApp` first, then use surgical Edit calls. NEVER write files from scratch.
@@ -391,9 +802,151 @@ cd ${NEW_APP}Bridge && swift test
 5. **Bridge First** - Define DTOs before implementing client or server (if using Bridge)
 6. **Tests Required** - Write swift-testing tests for ALL models
 7. **Build Loop** - Always run build.sh and fix errors before proceeding
-8. **Modifier Order** - JCS modifier stack order is critical
+8. **Modifier Order** - JCS modifier stack order is CRITICAL: JCSBottomBar -> GaiaTopBar -> JCSMain
 9. **Sendable** - All DTOs must be Sendable for Swift 6
 10. **No XCTest** - Use ONLY swift-testing framework
-11. **Agentic Loop** - Implement → Test → Build → Fix → Repeat
+11. **Agentic Loop** - Implement -> Test -> Build -> Fix -> Repeat
 12. **Track Progress** - Use TodoWrite to track all tasks
 13. **LAUNCH THE APP** - After successful build, open the app so the user sees it running
+14. **No NavigationView** - Use Interface routing with .jTag() for view switching
+15. **No .font() on Images** - Use .resizable().aspectRatio().frame() pattern
+16. **No Spacer centering** - Use .frame(alignment: .center) instead
+17. **Always topBarPadding** - Child views need .padding(.top, topBarPadding)
+
+---
+
+## Example Feature Templates
+
+### Bridge DTO
+
+```swift
+// ${NEW_APP}Bridge/Sources/${NEW_APP}Bridge/[Feature].swift
+import Foundation
+import JBS
+
+public enum [Feature] {
+    public struct Micro: Codable, Hashable, Identifiable, Sendable {
+        public var id: UUID?
+        public var name: String
+        public var createdDate: Date?
+
+        public init(id: UUID? = nil, name: String, createdDate: Date? = nil) {
+            self.id = id
+            self.name = name
+            self.createdDate = createdDate
+        }
+    }
+
+    public struct CreateData: Codable, Sendable {
+        public var name: String
+
+        public init(name: String) {
+            self.name = name
+        }
+    }
+}
+```
+
+### Swift Testing
+
+```swift
+// ${NEW_APP}Bridge/Tests/${NEW_APP}BridgeTests/[Feature]Tests.swift
+import Testing
+@testable import ${NEW_APP}Bridge
+
+@Suite("[Feature] Tests")
+struct [Feature]Tests {
+
+    @Test("[Feature] initializes correctly")
+    func initialization() {
+        let item = [Feature].Micro(id: UUID(), name: "Test")
+        #expect(item.name == "Test")
+    }
+
+    @Test("[Feature] encodes to JSON")
+    func encoding() throws {
+        let item = [Feature].Micro(id: UUID(), name: "Test")
+        let data = try JSONEncoder().encode(item)
+        #expect(!data.isEmpty)
+    }
+
+    @Test("[Feature] decodes from JSON")
+    func decoding() throws {
+        let json = """
+        {"id": "00000000-0000-0000-0000-000000000001", "name": "Test"}
+        """
+        let item = try JSONDecoder().decode([Feature].Micro.self, from: json.data(using: .utf8)!)
+        #expect(item.name == "Test")
+    }
+}
+```
+
+### Client View (Scrollable Content)
+
+```swift
+// ${NEW_APP}/Shared/Views/[Feature]View.swift
+import SwiftUI
+import JCS
+import JUI
+
+struct [Feature]View: View {
+    @EnvironmentObject var network: Network
+    @EnvironmentObject var interface: Interface
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: .medium) {
+                ForEach(items, id: \.self) { item in
+                    [Feature]Cell(item: item)
+                }
+            }
+            .padding()
+            .padding(.top, topBarPadding)
+        }
+    }
+}
+```
+
+### Client View (Centered Content)
+
+```swift
+// ${NEW_APP}/Shared/Views/EmptyStateView.swift
+import SwiftUI
+import JCS
+import JUI
+
+struct EmptyStateView: View {
+    var body: some View {
+        VStack(spacing: .large) {
+            Image(systemName: "tray")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: Fibonacci.xxLarge.wholeValue, height: Fibonacci.xxLarge.wholeValue)
+                .foregroundStyle(.med)
+
+            Text("No Items Yet")
+                .lunaFont(.title, weight: .bold)
+
+            Text("Create your first item to get started")
+                .lunaFont(.body)
+                .foregroundStyle(.med)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .padding()
+    }
+}
+```
+
+### Network Method
+
+```swift
+// In Network.swift
+func fetch[Feature]s() async throws -> [[Feature].Micro] {
+    try await request(
+        path: "/[feature]s",
+        method: .GET,
+        responseType: [[Feature].Micro].self
+    )
+}
+```
