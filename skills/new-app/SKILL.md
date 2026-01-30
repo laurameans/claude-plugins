@@ -53,19 +53,6 @@ Image("my-icon")
     .aspectRatio(contentMode: .fit)
     .frame(width: Fibonacci.medium.wholeValue, height: Fibonacci.medium.wholeValue)
     .foregroundStyle(.accentColor)
-
-// CORRECT - Full images (photos, logos with colors)
-Image("logo-full")
-    .resizable()
-    .aspectRatio(contentMode: .fit)
-    .frame(height: Fibonacci.xLarge.wholeValue)
-
-// WRONG - NEVER DO THIS:
-Image(systemName: "star.fill")
-    .font(.system(size: 64))  // NEVER use .font() on images
-
-Image(systemName: "star.fill")
-    .imageScale(.large)  // Avoid - use explicit frame sizing instead
 ```
 
 ---
@@ -82,249 +69,22 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .center) {
-            // Route-based content switching with .jTag
             HomeView()
                 .jTag(interface.route as? Interface.Routes == Interface.Routes.home)
 
             SettingsView()
                 .jTag(interface.route as? Interface.Routes == Interface.Routes.settings)
-
-            // Auth views if needed
-            if self.interface.route as? AuthRoute != nil {
-                JCSAuthView<Interface, Network>(...)
-            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // MODIFIER ORDER IS CRITICAL - DO NOT CHANGE
         .modifier(JCSBottomBar<Interface>(shadowColor: Color.shadowColor, content: {
             TabBarView()
         }, subRouter: { _ in
             EmptyView()
         }))
-        .modifier(GaiaTopBar<Interface, Network>(
-            topBarPadding: topBarPadding,
-            // ... other params
-        ))
-        .modifier(JCSMain<Network, Interface>(
-            modalView: { /* modals */ },
-            overlayView: { /* overlays */ },
-            enableEdgeEffects: true
-        ))
+        .modifier(GaiaTopBar<Interface, Network>(...))
+        .modifier(JCSMain<Network, Interface>(...))
         .background {
-            backgroundView
-                .edgesIgnoringSafeArea(.all)
-        }
-    }
-}
-```
-
----
-
-## CORRECT CHILD VIEW PATTERNS
-
-### For scrollable content (MOST COMMON):
-
-**CRITICAL**: All ScrollView content MUST have BOTH top AND bottom padding.
-
-```swift
-let topBarHeight: CGFloat = 52
-let bottomBarHeight: CGFloat = 100
-
-struct HomeView: View {
-    @EnvironmentObject var interface: Interface
-    @EnvironmentObject var network: Network
-
-    var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: .medium) {
-                ForEach(items, id: \.self) { item in
-                    ItemCell(item: item)
-                }
-            }
-            .padding()
-            .padding(.top, topBarHeight)
-            .padding(.bottom, bottomBarHeight)
-        }
-    }
-}
-```
-
-### For centered content (no scroll):
-
-```swift
-struct EmptyStateView: View {
-    var body: some View {
-        VStack(spacing: .large) {
-            Image(systemName: "star.fill")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: Fibonacci.xxLarge.wholeValue, height: Fibonacci.xxLarge.wholeValue)
-                .foregroundStyle(.accentColor)
-
-            Text("Welcome")
-                .lunaFont(.largeTitle, weight: .bold)
-
-            Text("Get started by creating your first item")
-                .lunaFont(.body)
-                .foregroundStyle(.med)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-    }
-}
-```
-
-### For grid content:
-
-```swift
-struct GalleryView: View {
-    var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: interface.isMobile ? 142 : 360))], spacing: .xSmall) {
-                ForEach(items, id: \.self) { item in
-                    ItemCell(item: item)
-                }
-            }
-            .padding()
-            .padding(.top, topBarHeight)
-            .padding(.bottom, bottomBarHeight)
-        }
-    }
-}
-```
-
----
-
-## COMMON MISTAKES - NEVER DO THESE
-
-### 1. WRONG: Using Spacer() for centering
-
-```swift
-// WRONG
-struct BadCenteredView: View {
-    var body: some View {
-        VStack {
-            Spacer()           // NO!
-            Text("Centered")
-            Spacer()           // NO!
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)  // Without alignment!
-    }
-}
-
-// CORRECT
-struct GoodCenteredView: View {
-    var body: some View {
-        VStack {
-            Text("Centered")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-    }
-}
-```
-
-### 2. WRONG: Using .font() on Images
-
-```swift
-// WRONG
-Image(systemName: "star.fill")
-    .font(.system(size: 64))  // Images don't have fonts!
-
-// CORRECT
-Image(systemName: "star.fill")
-    .resizable()
-    .aspectRatio(contentMode: .fit)
-    .frame(width: Fibonacci.xxLarge.wholeValue, height: Fibonacci.xxLarge.wholeValue)
-```
-
-### 3. WRONG: Using NavigationView/NavigationStack
-
-```swift
-// WRONG
-NavigationStack {
-    List { ... }
-    .navigationTitle("Home")
-}
-
-// CORRECT - Use Interface routing
-ZStack {
-    HomeView()
-        .jTag(interface.route as? Interface.Routes == .home)
-}
-.modifier(GaiaTopBar<Interface, Network>(...))
-```
-
-### 4. WRONG: Using .toolbar
-
-```swift
-// WRONG
-.toolbar {
-    ToolbarItem(placement: .navigationBarTrailing) {
-        Button("Add") { }
-    }
-}
-
-// CORRECT - Use GaiaTopBar actions or custom overlay buttons
-```
-
-### 5. WRONG: Forgetting bar padding (CAUSES CONTENT OVERLAP!)
-
-```swift
-// WRONG
-ScrollView {
-    VStack { ... }
-    .padding()
-}
-
-// WRONG - Missing bottom padding
-ScrollView {
-    VStack { ... }
-    .padding()
-    .padding(.top, topBarHeight)
-}
-
-// WRONG - Using Fibonacci instead of 52pt
-ScrollView {
-    VStack { ... }
-    .padding()
-    .padding(.top, Fibonacci.large.wholeValue)
-}
-
-// CORRECT
-ScrollView {
-    VStack { ... }
-    .padding()
-    .padding(.top, topBarHeight)
-    .padding(.bottom, bottomBarHeight)
-}
-```
-
-### 6. WRONG: Creating custom navigation structure
-
-```swift
-// WRONG
-struct MyView: View {
-    var body: some View {
-        VStack(spacing: 0) {
-            // Custom top bar
-            HStack { ... }
-
-            // Content
-            ScrollView { ... }
-
-            // Custom bottom bar
-            HStack { ... }
-        }
-    }
-}
-
-// CORRECT
-struct MyView: View {
-    var body: some View {
-        ScrollView {
-            VStack { ... }
-            .padding()
-            .padding(.top, topBarHeight)
-            .padding(.bottom, bottomBarHeight)
+            backgroundView.edgesIgnoringSafeArea(.all)
         }
     }
 }
@@ -401,15 +161,15 @@ The JWS (Justin Web Services) platform is a comprehensive full-stack Swift devel
 ## Platform Stack
 
 ```
-+---------------------------------------------------------------+
-|                        YOUR APPLICATION                        |
-+---------------------------------------------------------------+
-|  JCX (Extensions)  |  JUI (UI Components)  |  JCS (Client)    |
-+---------------------------------------------------------------+
-|                          JBS (Business Logic)                  |
-+---------------------------------------------------------------+
-|                     JWS (Server Framework)                     |
-+---------------------------------------------------------------+
+┌─────────────────────────────────────────────────────────────────┐
+│                        YOUR APPLICATION                          │
+├─────────────────────────────────────────────────────────────────┤
+│  JCX (Extensions)  │  JUI (UI Components)  │  JCS (Client)      │
+├─────────────────────────────────────────────────────────────────┤
+│                          JBS (Business Logic)                    │
+├─────────────────────────────────────────────────────────────────┤
+│                     JWS (Server Framework)                       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### JCX - Extensions & Macros
@@ -421,8 +181,6 @@ The JWS (Justin Web Services) platform is a comprehensive full-stack Swift devel
 - Reusable SwiftUI components
 - Design system primitives
 - Platform-adaptive layouts
-- `lunaFont()` for typography
-- `LunaButtonStyle`, `JCSButtonStyle` for buttons
 
 ### JBS - Business Logic & DTOs
 - Data Transfer Objects (shared client/server)
@@ -435,7 +193,6 @@ The JWS (Justin Web Services) platform is a comprehensive full-stack Swift devel
 - **InterfaceEngine** - App routing and navigation
 - Network layer with async/await
 - Keychain integration
-- **JCS Modifiers** - `JCSBottomBar`, `GaiaTopBar`, `JCSMain`
 
 ### JWS - Server Framework (Vapor-based)
 - Modular architecture
@@ -451,10 +208,10 @@ The JWS (Justin Web Services) platform is a comprehensive full-stack Swift devel
 ### The Bridge Pattern
 
 ```
-+---------------+     +---------------+     +---------------+
-|   Client      |---->|    Bridge     |<----|   Server      |
-|  (SwiftUI)    |     |   (DTOs)      |     |   (Vapor)     |
-+---------------+     +---------------+     +---------------+
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Client     │────▶│    Bridge    │◀────│   Server     │
+│  (SwiftUI)   │     │   (DTOs)     │     │   (Vapor)    │
+└──────────────┘     └──────────────┘     └──────────────┘
 ```
 
 The Bridge contains shared code: User models, API types, enums, route definitions.
@@ -483,14 +240,14 @@ public class Interface: InterfaceEngineBase, InterfaceEngine {
 }
 ```
 
-### JCS Modifier Stack (ORDER MATTERS!)
+### JCS Modifier Stack (ORDER MATTERS)
 
 ```swift
 ContentView()
-    .modifier(JCSBottomBar(...))  // 1. Bottom navigation - FIRST
-    .modifier(GaiaTopBar(...))    // 2. Top bar - SECOND
-    .modifier(JCSMain(...))       // 3. Main wrapper - THIRD
-    .background(...)              // 4. Background - LAST
+    .jcsBottomBar()      // 1. Bottom navigation
+    .gaiaTopBar()        // 2. Top bar
+    .jcsMain()           // 3. Main wrapper
+    .jcsBackground()     // 4. Background
 ```
 
 ### DTO Pattern in Bridge
@@ -589,12 +346,12 @@ mv "$TARGET/$NEW_APP/Shared/StarterAppApp.swift" "$TARGET/$NEW_APP/Shared/${NEW_
 ### Phase 2: Mass Rename References
 
 Use sed to replace:
-- `StarterApp` -> `$NEW_APP`
-- `StarterBridge` -> `${NEW_APP}Bridge`
-- `StarterServer` -> `${NEW_APP}Server`
-- `StarterServerApp` -> `${NEW_APP}ServerApp`
-- `starterapp` -> `$NEW_APP_LOWER`
-- `com.outtakes.starterapp` -> `ai.means.$NEW_APP_LOWER`
+- `StarterApp` → `$NEW_APP`
+- `StarterBridge` → `${NEW_APP}Bridge`
+- `StarterServer` → `${NEW_APP}Server`
+- `StarterServerApp` → `${NEW_APP}ServerApp`
+- `starterapp` → `$NEW_APP_LOWER`
+- `com.outtakes.starterapp` → `ai.means.$NEW_APP_LOWER`
 
 ### Phase 3: Verify Scaffold Builds
 
@@ -611,23 +368,23 @@ Based on user's app description:
 2. **For each feature, execute this loop**:
 
    ```
-   +-------------------------------------------+
-   |  a. Define DTOs in Bridge                 |
-   +-------------------------------------------+
-   |  b. Write swift-testing tests             |
-   +-------------------------------------------+
-   |  c. Run tests: swift test                 |
-   +-------------------------------------------+
-   |  d. Fix until tests pass                  |
-   +-------------------------------------------+
-   |  e. Add Server module                     |
-   +-------------------------------------------+
-   |  f. Update Client views/routes            |
-   +-------------------------------------------+
-   |  g. Run build.sh                          |
-   +-------------------------------------------+
-   |  h. Fix errors, loop until clean          |
-   +-------------------------------------------+
+   ┌─────────────────────────────────────────┐
+   │  a. Define DTOs in Bridge               │
+   ├─────────────────────────────────────────┤
+   │  b. Write swift-testing tests           │
+   ├─────────────────────────────────────────┤
+   │  c. Run tests: swift test               │
+   ├─────────────────────────────────────────┤
+   │  d. Fix until tests pass                │
+   ├─────────────────────────────────────────┤
+   │  e. Add Server module                   │
+   ├─────────────────────────────────────────┤
+   │  f. Update Client views/routes          │
+   ├─────────────────────────────────────────┤
+   │  g. Run build.sh                        │
+   ├─────────────────────────────────────────┤
+   │  h. Fix errors, loop until clean        │
+   └─────────────────────────────────────────┘
    ```
 
 3. **Mark TodoWrite items complete** as each feature ships
@@ -675,25 +432,25 @@ Provide summary:
 
 ```
 $NEW_APP/
-+-- $NEW_APP/                    # Client app
-|   +-- Shared/
-|   |   +-- ${NEW_APP}App.swift  # Entry point
-|   |   +-- Controllers/
-|   |   |   +-- Engine.swift     # Routes
-|   |   |   +-- Network.swift    # API
-|   |   +-- Views/
-|   +-- project.yml              # XcodeGen
-|   +-- build.sh
-|   +-- AGENTS.md
-+-- ${NEW_APP}Bridge/            # Shared DTOs
-|   +-- Package.swift
-|   +-- Sources/
-|   +-- Tests/                   # swift-testing
-+-- ${NEW_APP}Server/            # Vapor backend
-|   +-- Package.swift
-|   +-- Dockerfile
-|   +-- Sources/
-+-- build.sh                     # Root build
+├── $NEW_APP/                    # Client app
+│   ├── Shared/
+│   │   ├── ${NEW_APP}App.swift  # Entry point
+│   │   ├── Controllers/
+│   │   │   ├── Engine.swift     # Routes
+│   │   │   └── Network.swift    # API
+│   │   └── Views/
+│   ├── project.yml              # XcodeGen
+│   ├── build.sh
+│   └── AGENTS.md
+├── ${NEW_APP}Bridge/            # Shared DTOs
+│   ├── Package.swift
+│   ├── Sources/
+│   └── Tests/                   # swift-testing
+├── ${NEW_APP}Server/            # Vapor backend
+│   ├── Package.swift
+│   ├── Dockerfile
+│   └── Sources/
+└── build.sh                     # Root build
 ```
 
 ---
@@ -795,6 +552,7 @@ targets:
 
 ## Critical Rules for Claude
 
+### Development Rules
 1. **CLONE FIRST, MODIFY SECOND** - ALWAYS `cp -R StarterApp` first, then use surgical Edit calls. NEVER write files from scratch.
 2. **Deployment Targets** - ONLY use Swift 6.2, macOS v26, iOS v26, visionOS v26, watchOS v26, tvOS v26. NO FALLBACKS.
 3. **Always prompt for name and description** if not provided
@@ -805,13 +563,25 @@ targets:
 8. **Modifier Order** - JCS modifier stack order is CRITICAL: JCSBottomBar -> GaiaTopBar -> JCSMain
 9. **Sendable** - All DTOs must be Sendable for Swift 6
 10. **No XCTest** - Use ONLY swift-testing framework
-11. **Agentic Loop** - Implement -> Test -> Build -> Fix -> Repeat
+11. **Agentic Loop** - Implement → Test → Build → Fix → Repeat
 12. **Track Progress** - Use TodoWrite to track all tasks
 13. **LAUNCH THE APP** - After successful build, open the app so the user sees it running
 14. **No NavigationView** - Use Interface routing with .jTag() for view switching
 15. **No .font() on Images** - Use .resizable().aspectRatio().frame() pattern
 16. **No Spacer centering** - Use .frame(alignment: .center) instead
-17. **Always topBarPadding** - Child views need .padding(.top, topBarPadding)
+17. **Always bar padding** - Child views need `.padding(.top, topBarHeight)` AND `.padding(.bottom, bottomBarHeight)`
+
+### Distribution Rules
+18. **ALWAYS verify `asc` is installed** before distribution phases
+19. **ALWAYS verify authentication** with `asc auth status`
+20. **Build Release config** for distribution (not Debug)
+21. **Wait for build processing** after upload (~30-60 seconds)
+22. **Add localized release notes** for all builds
+23. **Monitor crash reports** after TestFlight distribution
+24. **Respond to low-star reviews** promptly and professionally
+25. **Get user approval** before submitting to App Store review
+26. **Never auto-release** - always confirm with user first
+27. **Log all distribution actions** for audit trail
 
 ---
 
@@ -881,7 +651,7 @@ struct [Feature]Tests {
 }
 ```
 
-### Client View (Scrollable Content)
+### Client View
 
 ```swift
 // ${NEW_APP}/Shared/Views/[Feature]View.swift
@@ -894,46 +664,12 @@ struct [Feature]View: View {
     @EnvironmentObject var interface: Interface
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: .medium) {
-                ForEach(items, id: \.self) { item in
-                    [Feature]Cell(item: item)
-                }
+        ScrollView {
+            VStack(spacing: 16) {
+                // Content
             }
             .padding()
-            .padding(.top, topBarPadding)
         }
-    }
-}
-```
-
-### Client View (Centered Content)
-
-```swift
-// ${NEW_APP}/Shared/Views/EmptyStateView.swift
-import SwiftUI
-import JCS
-import JUI
-
-struct EmptyStateView: View {
-    var body: some View {
-        VStack(spacing: .large) {
-            Image(systemName: "tray")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: Fibonacci.xxLarge.wholeValue, height: Fibonacci.xxLarge.wholeValue)
-                .foregroundStyle(.med)
-
-            Text("No Items Yet")
-                .lunaFont(.title, weight: .bold)
-
-            Text("Create your first item to get started")
-                .lunaFont(.body)
-                .foregroundStyle(.med)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .padding()
     }
 }
 ```
@@ -950,3 +686,405 @@ func fetch[Feature]s() async throws -> [[Feature].Micro] {
     )
 }
 ```
+
+---
+
+# App Store Connect Distribution (ASC CLI)
+
+End-to-end agentic distribution to TestFlight and App Store using the `asc` CLI tool.
+
+## Prerequisites
+
+### Install ASC CLI
+
+```bash
+# Install via Homebrew
+brew tap rudrankriyam/tap && brew install rudrankriyam/tap/asc
+
+# Or via install script
+curl -fsSL https://raw.githubusercontent.com/rudrankriyam/App-Store-Connect-CLI/main/install.sh | bash
+
+# Verify installation
+asc --version
+```
+
+### Authentication Setup
+
+```bash
+# Register API credentials (interactive)
+asc auth login
+
+# Or with explicit flags
+asc auth login \
+  --key-id "YOUR_KEY_ID" \
+  --issuer-id "YOUR_ISSUER_ID" \
+  --private-key-path "/path/to/AuthKey_XXXXXX.p8"
+
+# Verify authentication
+asc auth status
+
+# Switch between profiles if multiple exist
+asc auth switch --profile "ClientApp"
+```
+
+**Environment Variables for CI/CD:**
+```bash
+export ASC_KEY_ID="ABC123"
+export ASC_ISSUER_ID="DEF456"
+export ASC_PRIVATE_KEY_PATH="/path/to/AuthKey.p8"
+export ASC_PROFILE="ClientApp"
+```
+
+---
+
+## PHASE 7: TestFlight Distribution
+
+After successful build, distribute to TestFlight for beta testing.
+
+### Step 1: Build Release Archive
+
+```bash
+cd "$TARGET/$NEW_APP"
+
+# Build iOS release archive
+xcodebuild -scheme ${NEW_APP}-iOS \
+  -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -archivePath ./build/${NEW_APP}.xcarchive \
+  -skipMacroValidation \
+  -skipPackageSignatureValidation \
+  -allowProvisioningUpdates \
+  archive
+
+# Export IPA for upload
+xcodebuild -exportArchive \
+  -archivePath ./build/${NEW_APP}.xcarchive \
+  -exportPath ./build \
+  -exportOptionsPlist ExportOptions.plist \
+  -allowProvisioningUpdates
+```
+
+### Step 2: Upload Build to App Store Connect
+
+```bash
+# Get app ID first
+APP_ID=$(asc apps --paginate | jq -r '.[] | select(.name=="'${NEW_APP}'") | .id')
+
+# Upload the IPA
+asc builds upload --app "$APP_ID" --ipa "./build/${NEW_APP}.ipa"
+
+# List builds to verify upload
+asc builds list --app "$APP_ID" --limit 5
+```
+
+### Step 3: Configure TestFlight Beta Groups
+
+```bash
+# List existing beta groups
+asc beta-groups list --app "$APP_ID"
+
+# Create a new beta group
+asc beta-groups create --app "$APP_ID" --name "Internal Testers"
+
+# Add testers to group
+asc beta-testers add --app "$APP_ID" --email "tester@example.com" --first-name "Test" --last-name "User"
+asc beta-groups add-testers --group "GROUP_ID" --tester-ids "TESTER_ID"
+
+# Add build to beta group
+BUILD_ID=$(asc builds list --app "$APP_ID" --limit 1 | jq -r '.[0].id')
+asc builds add-groups --build "$BUILD_ID" --group "GROUP_ID"
+```
+
+### Step 4: Add What's New (Build Localizations)
+
+```bash
+# Add release notes for beta testers
+asc build-localizations create \
+  --build "$BUILD_ID" \
+  --locale "en-US" \
+  --whats-new "- New feature: [Description]
+- Bug fixes and improvements
+- Performance optimizations"
+
+# Update existing localization
+asc build-localizations update --id "LOCALIZATION_ID" --whats-new "Updated notes..."
+```
+
+### Step 5: Monitor TestFlight Feedback
+
+```bash
+# Get beta feedback
+asc feedback --app "$APP_ID" --paginate
+
+# Filter by device
+asc feedback --app "$APP_ID" --device-model "iPhone15,3" --os-version "17.2"
+
+# Get crash reports
+asc crashes --app "$APP_ID" --sort -createdDate --limit 10
+
+# Get full crash details
+asc crashes --app "$APP_ID" --output table
+```
+
+---
+
+## PHASE 8: App Store Review & Submission
+
+Submit to App Store for review.
+
+### Step 1: Create App Store Version
+
+```bash
+# List current versions
+asc versions list --app "$APP_ID"
+
+# Attach build to version
+asc versions attach-build --version-id "VERSION_ID" --build "$BUILD_ID"
+```
+
+### Step 2: Submit for Review
+
+```bash
+# Submit app for review
+asc submit create \
+  --app "$APP_ID" \
+  --version "1.0.0" \
+  --build "$BUILD_ID" \
+  --confirm
+
+# Check submission status
+asc submit status --version-id "VERSION_ID"
+
+# Cancel submission if needed
+asc submit cancel --version-id "VERSION_ID" --confirm
+```
+
+### Step 3: Monitor Review Status
+
+```bash
+# Check current status (poll in agentic loop)
+asc submit status --version-id "VERSION_ID" | jq '.state'
+
+# Possible states: WAITING_FOR_REVIEW, IN_REVIEW, PENDING_DEVELOPER_RELEASE, APPROVED, REJECTED
+```
+
+---
+
+## PHASE 9: Review Response & Rebuttal
+
+Handle App Store reviews and respond to user feedback.
+
+### Step 1: Fetch App Reviews
+
+```bash
+# Get all reviews
+asc reviews --app "$APP_ID" --paginate
+
+# Filter by star rating
+asc reviews --app "$APP_ID" --stars 1 --output table
+
+# Filter by territory
+asc reviews --app "$APP_ID" --territory US --output markdown
+
+# Sort by date (newest first)
+asc reviews --app "$APP_ID" --sort -createdDate --limit 20
+```
+
+### Step 2: Respond to Reviews
+
+```bash
+# Respond to a specific review
+asc reviews respond \
+  --review-id "REVIEW_ID" \
+  --response "Thank you for your feedback! We've addressed this issue in version 1.1.0. Please update and let us know if you experience any further problems."
+
+# Get existing response
+asc reviews response for-review --review-id "REVIEW_ID"
+
+# Update response
+asc reviews response get --id "RESPONSE_ID"
+
+# Delete response if needed
+asc reviews response delete --id "RESPONSE_ID" --confirm
+```
+
+### Step 3: Agentic Review Response Loop
+
+Claude executes this loop for pending reviews:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. Fetch unresponded 1-3 star reviews                      │
+├─────────────────────────────────────────────────────────────┤
+│  2. Analyze review content and identify issues              │
+├─────────────────────────────────────────────────────────────┤
+│  3. Draft professional, helpful response                    │
+├─────────────────────────────────────────────────────────────┤
+│  4. Present response to user for approval                   │
+├─────────────────────────────────────────────────────────────┤
+│  5. Post approved response via asc reviews respond          │
+├─────────────────────────────────────────────────────────────┤
+│  6. Log response for tracking                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Response Guidelines:**
+- Always thank the reviewer
+- Address specific concerns raised
+- Mention fixes if applicable
+- Invite further feedback
+- Keep responses professional and concise
+- Never be defensive or argumentative
+
+---
+
+## PHASE 10: Release to App Store
+
+After approval, release to App Store.
+
+### Step 1: Release Version
+
+```bash
+# Release approved version
+asc versions release --version-id "VERSION_ID" --confirm
+
+# Verify release
+asc versions get --version-id "VERSION_ID"
+```
+
+### Step 2: Post-Release Monitoring
+
+```bash
+# Monitor new reviews after release
+asc reviews --app "$APP_ID" --sort -createdDate --limit 20
+
+# Check for crash reports
+asc crashes --app "$APP_ID" --sort -createdDate
+
+# Expire old builds
+asc builds expire-all --app "$APP_ID" --older-than 90d --dry-run
+asc builds expire-all --app "$APP_ID" --older-than 90d --confirm
+```
+
+---
+
+## Complete Distribution Script
+
+One-command distribution from build to TestFlight:
+
+```bash
+#!/bin/bash
+# distribute.sh - Full TestFlight distribution
+
+set -e
+
+NEW_APP="$1"
+NEW_APP_LOWER=$(echo "$NEW_APP" | tr '[:upper:]' '[:lower:]')
+TARGET="/Users/justinmeans/Documents/JMLLC/$NEW_APP"
+
+echo "🏗️ Building release archive..."
+cd "$TARGET/$NEW_APP"
+xcodebuild -scheme ${NEW_APP}-iOS \
+  -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -archivePath ./build/${NEW_APP}.xcarchive \
+  -skipMacroValidation \
+  -skipPackageSignatureValidation \
+  -allowProvisioningUpdates \
+  archive
+
+echo "📦 Exporting IPA..."
+xcodebuild -exportArchive \
+  -archivePath ./build/${NEW_APP}.xcarchive \
+  -exportPath ./build \
+  -exportOptionsPlist ExportOptions.plist \
+  -allowProvisioningUpdates
+
+echo "🔍 Getting app ID..."
+APP_ID=$(asc apps --paginate | jq -r '.[] | select(.name=="'${NEW_APP}'") | .id')
+
+echo "⬆️ Uploading to App Store Connect..."
+asc builds upload --app "$APP_ID" --ipa "./build/${NEW_APP}.ipa"
+
+echo "📋 Getting build ID..."
+sleep 30  # Wait for processing
+BUILD_ID=$(asc builds list --app "$APP_ID" --limit 1 | jq -r '.[0].id')
+
+echo "📝 Adding release notes..."
+asc build-localizations create \
+  --build "$BUILD_ID" \
+  --locale "en-US" \
+  --whats-new "New build uploaded via agentic distribution"
+
+echo "✅ Distribution complete!"
+echo "App ID: $APP_ID"
+echo "Build ID: $BUILD_ID"
+```
+
+---
+
+## ASC CLI Quick Reference
+
+### Apps
+```bash
+asc apps                          # List all apps
+asc apps --paginate               # List all with pagination
+```
+
+### Builds
+```bash
+asc builds list --app "APP_ID"
+asc builds upload --app "APP_ID" --ipa "path.ipa"
+asc builds info --build "BUILD_ID"
+asc builds expire --build "BUILD_ID"
+```
+
+### Beta Groups & Testers
+```bash
+asc beta-groups list --app "APP_ID"
+asc beta-groups create --app "APP_ID" --name "Group Name"
+asc beta-testers list --app "APP_ID"
+asc beta-testers add --app "APP_ID" --email "email" --first-name "First" --last-name "Last"
+```
+
+### Reviews
+```bash
+asc reviews --app "APP_ID"
+asc reviews --app "APP_ID" --stars 1
+asc reviews respond --review-id "ID" --response "Response text"
+```
+
+### Submissions
+```bash
+asc submit create --app "APP_ID" --version "1.0" --build "BUILD_ID" --confirm
+asc submit status --version-id "VERSION_ID"
+asc submit cancel --version-id "VERSION_ID" --confirm
+```
+
+### Versions
+```bash
+asc versions list --app "APP_ID"
+asc versions attach-build --version-id "VERSION_ID" --build "BUILD_ID"
+asc versions release --version-id "VERSION_ID" --confirm
+```
+
+### Feedback & Crashes
+```bash
+asc feedback --app "APP_ID"
+asc crashes --app "APP_ID"
+```
+
+---
+
+## Distribution Rules for Claude
+
+1. **ALWAYS verify `asc` is installed** before distribution phases
+2. **ALWAYS verify authentication** with `asc auth status`
+3. **Build Release config** for distribution (not Debug)
+4. **Wait for build processing** after upload (~30-60 seconds)
+5. **Add localized release notes** for all builds
+6. **Monitor crash reports** after TestFlight distribution
+7. **Respond to low-star reviews** promptly and professionally
+8. **Get user approval** before submitting to App Store review
+9. **Never auto-release** - always confirm with user first
+10. **Log all distribution actions** for audit trail
