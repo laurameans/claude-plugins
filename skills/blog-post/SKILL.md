@@ -52,6 +52,7 @@ If no arguments provided, ask the user for both.
 - Find 3-6 well-reviewed products across networks
 - Collect the returned IDs to include as `affiliate_link_ids` in the post
 - **ALWAYS include inline affiliate links in the body text** — don't just list products at the bottom. Find natural mentions of each product category in the body (e.g., "sunscreen", "hiking shoes") and wrap them with the affiliate link. Every product in the packing section should have at least one contextual link in the body text above it.
+- **Inline links MUST be contextually relevant** — only link a word/phrase when the surrounding sentence is actually talking about that product. Never match substrings inside other words (e.g., "hat" inside "that's", "trail" when referring to a place name). Never link proper nouns, place names, or branded locations to unrelated products (e.g., "Outlets" shopping center to a travel adapter). The linked text must genuinely refer to the product being linked.
 - **ALWAYS verify affiliate links are working** before publishing. Test each Amazon ASIN URL (`https://www.amazon.com/dp/{ASIN}`) to confirm it returns a valid product page (not 404). Replace any broken ASINs with working alternatives.
 
 ---
