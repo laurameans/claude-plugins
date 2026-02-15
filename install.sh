@@ -76,7 +76,7 @@ clone_or_pull "claude-plugins" "$JMLLC_DIR/claude-plugins" "Claude Plugins"
 
 # Symlink skills to Claude commands directory
 echo "Linking skills..."
-for skill in new-app jws-style jws-page x-news x-monitor manim; do
+for skill in new-app jws-style jws-page x-news x-monitor manim blog-post outfit-post new-site slop-outfit post; do
     src="$JMLLC_DIR/claude-plugins/skills/$skill/SKILL.md"
     dst="$CLAUDE_DIR/commands/$skill.md"
     if [ -f "$src" ]; then
@@ -143,6 +143,11 @@ echo "  /jws-page     - Manage website page content"
 echo "  /x-news       - Aggregate news from X feeds"
 echo "  /x-monitor    - Breaking news alerts"
 echo "  /manim        - Create animated explainer videos"
+echo "  /blog-post    - Create blog posts with photos & affiliate links"
+echo "  /outfit-post  - Create outfit recommendations with affiliate links"
+echo "  /new-site     - Add new site to the blog network"
+echo "  /slop-outfit  - Create Laszlo-voice outfit for Slop Fashion"
+echo "  /post         - Unified content creation for all sites"
 echo ""
 echo "To update all repos:  jws-update"
 echo "Or re-run this script to update everything."

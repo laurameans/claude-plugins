@@ -89,7 +89,17 @@ claude-plugins/
 │   │   └── SKILL.md
 │   ├── x-news/
 │   │   └── SKILL.md
-│   └── x-monitor/
+│   ├── x-monitor/
+│   │   └── SKILL.md
+│   ├── blog-post/
+│   │   └── SKILL.md
+│   ├── outfit-post/
+│   │   └── SKILL.md
+│   ├── new-site/
+│   │   └── SKILL.md
+│   ├── slop-outfit/
+│   │   └── SKILL.md
+│   └── post/
 │       └── SKILL.md
 ├── scripts/               # Helper scripts for skills
 ├── README.md

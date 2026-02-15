@@ -46,6 +46,11 @@ When team members clone the project and trust it, Claude Code will prompt them t
 | **x-news** | `/x-news` | Generate hourly news digest from curated X lists |
 | **x-monitor** | `/x-monitor` | Breaking news monitor with Bloomberg-level alert thresholds |
 | **manim** | `/manim <topic>` | Create 3Blue1Brown-style animated explainer videos |
+| **blog-post** | `/blog-post <site> "<topic>"` | Create full blog post with photos and affiliate links |
+| **outfit-post** | `/outfit-post "<description>" [urls...]` | Create outfit recommendation with blog post and social captions |
+| **new-site** | `/new-site <slug> "<name>" "<tagline>" <domain>` | Add new site to the multi-site blog network |
+| **slop-outfit** | `/slop-outfit "<description>"` | Create Laszlo-voice outfit post for Slop Fashion |
+| **post** | `/post "<description>"` | Unified content creation for all sites (auto-routes by topic) |
 
 ## Requirements
 
